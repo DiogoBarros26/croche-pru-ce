@@ -198,6 +198,71 @@ botaoLimpar.addEventListener("click", function () {
     document.getElementById("receita").textContent = "";
 });
 
+// ===== Salvar PNG =====
+// Desenha o gráfico numa imagem, com o número de cada carreira do lado direito
+// e o número dos pontos embaixo, e baixa como arquivo .png
+function salvarPng() {
+    const tam = Math.max(12, Math.min(30, Math.floor(2000 / Math.max(linhas, colunas))));
+    const margem = 36; // espaço para os números
+    const tela = document.createElement("canvas");
+    tela.width = colunas * tam + margem + 1;
+    tela.height = linhas * tam + margem + 1;
+    const pincel = tela.getContext("2d");
+
+    pincel.fillStyle = "#ffffff";
+    pincel.fillRect(0, 0, tela.width, tela.height);
+
+    // Quadrados
+    for (let linha = 0; linha < linhas; linha++) {
+        for (let coluna = 0; coluna < colunas; coluna++) {
+            pincel.fillStyle = fioPorCodigo[corDaCelula(linha, coluna)].hex;
+            pincel.fillRect(coluna * tam, linha * tam, tam, tam);
+        }
+    }
+
+    // Linhas da grade (mais fortes a cada 10, pra facilitar a contagem)
+    for (let i = 0; i <= colunas; i++) {
+        pincel.fillStyle = i % 10 === 0 ? "#888888" : "#cccccc";
+        pincel.fillRect(i * tam, 0, 1, linhas * tam + 1);
+    }
+    for (let i = 0; i <= linhas; i++) {
+        pincel.fillStyle = (linhas - i) % 10 === 0 ? "#888888" : "#cccccc";
+        pincel.fillRect(0, i * tam, colunas * tam + 1, 1);
+    }
+
+    // Números: carreiras à direita (1 embaixo) e pontos embaixo
+    pincel.fillStyle = "#4a4060";
+    pincel.font = Math.min(12, tam - 2) + "px sans-serif";
+    pincel.textBaseline = "middle";
+    pincel.textAlign = "left";
+    for (let linha = 0; linha < linhas; linha++) {
+        const carreira = linhas - linha;
+        if (tam >= 16 || carreira % 5 === 0 || carreira === 1) {
+            pincel.fillText(carreira, colunas * tam + 6, linha * tam + tam / 2);
+        }
+    }
+    pincel.textAlign = "center";
+    pincel.textBaseline = "top";
+    for (let coluna = 0; coluna < colunas; coluna++) {
+        const ponto = coluna + 1;
+        if (tam >= 16 || ponto % 5 === 0 || ponto === 1) {
+            pincel.fillText(ponto, coluna * tam + tam / 2, linhas * tam + 8);
+        }
+    }
+
+    tela.toBlob(function (arquivo) {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(arquivo);
+        link.download = "grafico-croche.png";
+        link.click();
+        setTimeout(function () {
+            URL.revokeObjectURL(link.href);
+        }, 1000);
+    });
+}
+
+document.getElementById("salvar-png").addEventListener("click", salvarPng);
+
 // ===== Receita =====
 function corDaCelula(linha, coluna) {
     const celula = grade.children[linha * colunas + coluna];

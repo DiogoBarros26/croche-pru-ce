@@ -106,16 +106,19 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-#criar {
+#criar,
+#salvar-png {
   background: var(--lavanda);
   color: var(--lavanda-texto);
   box-shadow: 0 4px 0 var(--lavanda-sombra);
 }
-#criar:hover {
+#criar:hover,
+#salvar-png:hover {
   background: var(--lavanda-hover);
   box-shadow: 0 6px 0 var(--lavanda-sombra);
 }
-#criar:active {
+#criar:active,
+#salvar-png:active {
   box-shadow: 0 1px 0 var(--lavanda-sombra);
 }
 
