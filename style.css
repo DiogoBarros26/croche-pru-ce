@@ -1,0 +1,338 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap");
+
+/* ===== Cores do site (modo dia) ===== */
+:root {
+  --fundo: #ebe0cc;
+  --cartao: #ffffff;
+  --texto: #4a4060;
+  --titulo: #7d63b5;
+  --borda: #e3dcef;
+  --sombra: rgba(125, 99, 181, 0.12);
+  --sombra-forte: rgba(125, 99, 181, 0.25);
+
+  --lavanda: #c9b8e8;
+  --lavanda-hover: #d5c7ee;
+  --lavanda-sombra: #a893d1;
+  --lavanda-texto: #3d2c66;
+  --lavanda-clara: #efe8fb;
+  --lavanda-escura: #7d63b5;
+
+  --verde: #b5e3c4;
+  --verde-hover: #c4ead0;
+  --verde-sombra: #8cc7a0;
+  --verde-texto: #24573a;
+
+  --campo: #fbf9ff;
+
+  --rosa: #f6cfdc;
+  --rosa-hover: #f9dbe5;
+  --rosa-sombra: #e0a6ba;
+  --rosa-texto: #7a2e4a;
+  --rosa-forte: #ec9fb9;
+}
+
+/* ===== Modo noturno ===== */
+/* Fundo escuro em roxo acinzentado, com os mesmos tons pastel mais suaves */
+body.noturno {
+  --fundo: #1f1b26;
+  --cartao: #2b2535;
+  --texto: #e4dcf0;
+  --titulo: #c9b8e8;
+  --borda: #3d3549;
+  --sombra: rgba(0, 0, 0, 0.35);
+  --sombra-forte: rgba(0, 0, 0, 0.55);
+
+  --lavanda: #9d88c9;
+  --lavanda-hover: #ab98d3;
+  --lavanda-sombra: #6e5a99;
+  --lavanda-texto: #1f1530;
+  --lavanda-clara: #3d3352;
+  --lavanda-escura: #c9b8e8;
+
+  --verde: #8cc7a0;
+  --verde-hover: #9ad2ad;
+  --verde-sombra: #5f9874;
+  --verde-texto: #13301f;
+
+  --campo: #241f2d;
+
+  --rosa: #c98fa5;
+  --rosa-hover: #d39fb3;
+  --rosa-sombra: #96637a;
+  --rosa-texto: #2e1420;
+  --rosa-forte: #e07f9f;
+}
+
+body {
+  font-family: "Nunito", sans-serif;
+  color: var(--texto);
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--fundo);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background 0.3s, color 0.3s;
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--titulo);
+}
+
+/* ===== Botões ===== */
+button {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+button:hover {
+  transform: translateY(-2px);
+}
+button:active {
+  transform: translateY(1px);
+}
+button:focus-visible {
+  outline: 3px solid var(--lavanda-escura);
+  outline-offset: 2px;
+}
+
+#criar {
+  background: var(--lavanda);
+  color: var(--lavanda-texto);
+  box-shadow: 0 4px 0 var(--lavanda-sombra);
+}
+#criar:hover {
+  background: var(--lavanda-hover);
+  box-shadow: 0 6px 0 var(--lavanda-sombra);
+}
+#criar:active {
+  box-shadow: 0 1px 0 var(--lavanda-sombra);
+}
+
+#gerar {
+  background: var(--verde);
+  color: var(--verde-texto);
+  font-size: 17px;
+  padding: 12px 30px;
+  box-shadow: 0 4px 0 var(--verde-sombra);
+}
+#gerar:hover {
+  background: var(--verde-hover);
+  box-shadow: 0 6px 0 var(--verde-sombra);
+}
+#gerar:active {
+  box-shadow: 0 1px 0 var(--verde-sombra);
+}
+
+#acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+#limpar {
+  background: var(--rosa);
+  color: var(--rosa-texto);
+  box-shadow: 0 4px 0 var(--rosa-sombra);
+}
+#limpar:hover {
+  background: var(--rosa-hover);
+  box-shadow: 0 6px 0 var(--rosa-sombra);
+}
+#limpar:active {
+  box-shadow: 0 1px 0 var(--rosa-sombra);
+}
+/* Segundo clique: pede confirmação antes de apagar */
+#limpar.confirmando {
+  background: var(--rosa-forte);
+}
+
+/* Botão de lua/sol no canto de cima */
+#botao-noturno {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  font-size: 22px;
+  background: var(--cartao);
+  border: 2px solid var(--lavanda);
+  box-shadow: 0 4px 0 var(--lavanda);
+}
+#botao-noturno:hover {
+  box-shadow: 0 6px 0 var(--lavanda);
+}
+#botao-noturno:active {
+  box-shadow: 0 1px 0 var(--lavanda);
+}
+
+/* ===== Tamanho da grade ===== */
+#tamanho {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 18px;
+  background: var(--cartao);
+  border-radius: 18px;
+  box-shadow: 0 4px 16px var(--sombra);
+}
+#tamanho label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+#tamanho input {
+  width: 80px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--texto);
+  border: 2px solid var(--borda);
+  border-radius: 12px;
+  background: var(--campo);
+}
+#tamanho input:focus {
+  outline: none;
+  border-color: var(--lavanda);
+}
+
+/* ===== Escolha do fio ===== */
+#escolha-fio {
+  position: relative;
+  margin-bottom: 14px;
+}
+#botao-fio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--cartao);
+  color: var(--texto);
+  border: 2px solid var(--lavanda);
+  box-shadow: 0 4px 0 var(--lavanda);
+}
+#botao-fio:hover {
+  box-shadow: 0 6px 0 var(--lavanda);
+}
+#botao-fio:active {
+  box-shadow: 0 1px 0 var(--lavanda);
+}
+#amostra {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--borda);
+}
+
+/* A paleta abre por cima da grade, sem empurrar nada pra baixo */
+#paleta {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: min(900px, 90vw);
+  padding: 16px;
+  background: var(--cartao);
+  border: 2px solid var(--lavanda-clara);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px var(--sombra-forte);
+}
+#paleta.escondida {
+  display: none;
+}
+.cor {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--borda);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.cor:hover {
+  transform: scale(1.2);
+}
+.cor.selecionada {
+  border: 3px solid var(--lavanda-escura);
+  box-shadow: 0 0 0 3px var(--lavanda-clara);
+}
+
+/* ===== Grade ===== */
+#area-grade {
+  overflow: auto;
+  max-width: 100%;
+  max-height: 75vh;
+  margin-bottom: 16px;
+  padding: 10px;
+  box-sizing: border-box;
+  background: var(--cartao);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px var(--sombra);
+}
+#grade {
+  --tam: 30px;
+  display: grid;
+  gap: 1px;
+  width: max-content;
+  background: var(--borda);
+  border: 1px solid var(--borda);
+  user-select: none;
+}
+.celula {
+  width: var(--tam);
+  height: var(--tam);
+  background: white;
+  cursor: pointer;
+}
+.celula:hover {
+  filter: brightness(0.92);
+}
+/* À noite os quadrados ficam um pouco mais apagados pra não ofuscar */
+body.noturno .celula,
+body.noturno .cor,
+body.noturno #amostra {
+  filter: brightness(0.85);
+}
+body.noturno .celula:hover {
+  filter: brightness(0.75);
+}
+
+/* ===== Receita ===== */
+#receita {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-width: min(900px, 100%);
+  margin: 18px 0 0;
+  padding: 18px 22px;
+  background: var(--cartao);
+  border-left: 6px solid var(--verde);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px var(--sombra);
+}
+#receita:empty {
+  display: none;
+}

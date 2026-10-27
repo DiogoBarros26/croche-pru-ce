@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gráfico de Crochê</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <button id="botao-noturno" title="Modo noturno">🌙</button>
+
+    <h1>Meu gráfico</h1>
+
+    <div id="tamanho">
+        <label>Pontos por carreira (largura)
+            <input type="number" id="colunas" min="1" max="200" value="30">
+        </label>
+        <label>Carreiras (altura)
+            <input type="number" id="linhas" min="1" max="200" value="30">
+        </label>
+        <button id="criar">Mudar tamanho</button>
+    </div>
+
+    <div id="escolha-fio">
+        <button id="botao-fio">
+            <span id="amostra"></span>
+            <span id="fio-atual"></span>
+            <span>▾</span>
+        </button>
+        <div id="paleta" class="escondida"></div>
+    </div>
+
+    <div id="area-grade">
+        <div id="grade"></div>
+    </div>
+
+    <div id="acoes">
+        <button id="limpar">Limpar grade</button>
+        <button id="gerar">Gerar Receita</button>
+    </div>
+    <pre id="receita"></pre>
+
+    <script src="fios.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
