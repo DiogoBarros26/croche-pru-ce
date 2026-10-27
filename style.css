@@ -302,6 +302,8 @@ button:focus-visible {
   background: var(--borda);
   border: 1px solid var(--borda);
   user-select: none;
+  /* Arrastar o dedo na grade pinta em vez de rolar a página */
+  touch-action: none;
 }
 .celula {
   width: var(--tam);

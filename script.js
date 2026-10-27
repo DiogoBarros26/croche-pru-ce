@@ -134,8 +134,9 @@ function ajustarTamanho() {
 
 window.addEventListener("resize", ajustarTamanho);
 
-// Um ouvinte só na grade inteira, em vez de um por quadrado
-grade.addEventListener("mousedown", function (evento) {
+// Um ouvinte só na grade inteira, em vez de um por quadrado.
+// "pointer" vale para mouse, dedo e caneta de mesa digitalizadora.
+grade.addEventListener("pointerdown", function (evento) {
     if (evento.target.classList.contains("celula")) {
         evento.preventDefault();
         pintando = true;
@@ -143,19 +144,25 @@ grade.addEventListener("mousedown", function (evento) {
     }
 });
 
-grade.addEventListener("mouseover", function (evento) {
-    if (pintando && evento.target.classList.contains("celula")) {
-        pintar(evento.target);
+// No toque e na caneta o evento fica preso ao primeiro quadrado,
+// então procuramos qual quadrado está embaixo do dedo agora
+grade.addEventListener("pointermove", function (evento) {
+    if (!pintando) return;
+    const embaixo = document.elementFromPoint(evento.clientX, evento.clientY);
+    if (embaixo && embaixo.classList.contains("celula")) {
+        pintar(embaixo);
     }
 });
 
-// Ao soltar o mouse, para de pintar e salva o desenho
-document.addEventListener("mouseup", function () {
+// Ao soltar, para de pintar e salva o desenho
+function pararDePintar() {
     if (pintando) {
         pintando = false;
         salvarDesenho();
     }
-});
+}
+document.addEventListener("pointerup", pararDePintar);
+document.addEventListener("pointercancel", pararDePintar);
 
 // ===== Tamanho =====
 document.getElementById("criar").addEventListener("click", function () {
