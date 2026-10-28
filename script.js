@@ -91,10 +91,15 @@ function lerPintados() {
     return pintados;
 }
 
-// Guarda o desenho no navegador pra não perder no F5
+// Guarda o desenho no navegador pra não perder no F5.
+// Se o desenho mudou, as carreiras marcadas como feitas não valem mais.
 function salvarDesenho() {
     try {
-        localStorage.setItem("desenho", JSON.stringify(lerPintados()));
+        const novo = JSON.stringify(lerPintados());
+        if (novo !== localStorage.getItem("desenho")) {
+            localStorage.removeItem("feitas");
+        }
+        localStorage.setItem("desenho", novo);
     } catch (erro) {}
 }
 
@@ -139,6 +144,7 @@ window.addEventListener("resize", ajustarTamanho);
 grade.addEventListener("pointerdown", function (evento) {
     if (evento.target.classList.contains("celula")) {
         evento.preventDefault();
+        guardarParaDesfazer();
         pintando = true;
         pintar(evento.target);
     }
@@ -170,6 +176,7 @@ document.getElementById("criar").addEventListener("click", function () {
     const campoColunas = document.getElementById("colunas");
     campoLinhas.value = limitar(campoLinhas.value);
     campoColunas.value = limitar(campoColunas.value);
+    guardarParaDesfazer();
     criarGrade(Number(campoLinhas.value), Number(campoColunas.value));
     salvarDesenho(); // se a grade diminuiu, o que ficou de fora sai do salvo
 
@@ -200,15 +207,55 @@ botaoLimpar.addEventListener("click", function () {
     }
 
     voltarBotaoLimpar();
+    guardarParaDesfazer();
     criarGrade(linhas, colunas, {});
     salvarDesenho();
     document.getElementById("receita").textContent = "";
 });
 
+// ===== Desfazer =====
+// Antes de cada mudança (pincelada, tamanho, limpar, foto) guardamos
+// uma cópia da grade. Ctrl+Z ou o botão voltam pra cópia anterior.
+const botaoDesfazer = document.getElementById("desfazer");
+const historico = [];
+
+function guardarParaDesfazer() {
+    historico.push({ linhas: linhas, colunas: colunas, pintados: lerPintados() });
+    if (historico.length > 50) historico.shift(); // guarda só as últimas 50
+    botaoDesfazer.disabled = false;
+}
+
+function desfazer() {
+    const anterior = historico.pop();
+    if (!anterior) return;
+    botaoDesfazer.disabled = historico.length === 0;
+
+    document.getElementById("linhas").value = anterior.linhas;
+    document.getElementById("colunas").value = anterior.colunas;
+    try {
+        localStorage.setItem("linhas", anterior.linhas);
+        localStorage.setItem("colunas", anterior.colunas);
+    } catch (erro) {}
+    criarGrade(anterior.linhas, anterior.colunas, anterior.pintados);
+    salvarDesenho();
+    if (document.getElementById("receita").textContent) gerarReceita();
+}
+
+botaoDesfazer.addEventListener("click", desfazer);
+
+document.addEventListener("keydown", function (evento) {
+    // Dentro dos campos de número, o Ctrl+Z continua desfazendo o que foi digitado
+    if (evento.target.tagName === "INPUT") return;
+    if ((evento.ctrlKey || evento.metaKey) && !evento.shiftKey && evento.key.toLowerCase() === "z") {
+        evento.preventDefault();
+        desfazer();
+    }
+});
+
 // ===== Salvar PNG =====
 // Desenha o gráfico numa imagem, com o número de cada carreira do lado direito
-// e o número dos pontos embaixo, e baixa como arquivo .png
-function salvarPng() {
+// e o número dos pontos embaixo. Serve pro PNG e pro PDF.
+function desenharGrafico() {
     const tam = Math.max(12, Math.min(30, Math.floor(2000 / Math.max(linhas, colunas))));
     const margem = 36; // espaço para os números
     const tela = document.createElement("canvas");
@@ -256,19 +303,351 @@ function salvarPng() {
             pincel.fillText(ponto, coluna * tam + tam / 2, linhas * tam + 8);
         }
     }
+    return tela;
+}
 
-    tela.toBlob(function (arquivo) {
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(arquivo);
-        link.download = "grafico-croche.png";
-        link.click();
-        setTimeout(function () {
-            URL.revokeObjectURL(link.href);
-        }, 1000);
+function baixarArquivo(arquivo, nome) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(arquivo);
+    link.download = nome;
+    link.click();
+    setTimeout(function () {
+        URL.revokeObjectURL(link.href);
+    }, 1000);
+}
+
+function salvarPng() {
+    desenharGrafico().toBlob(function (arquivo) {
+        baixarArquivo(arquivo, "grafico-croche.png");
     });
 }
 
+// ===== Receita em PDF =====
+// Folha A4: o gráfico em cima e a receita embaixo, com um quadradinho
+// do lado de cada carreira pra ela marcar à caneta se imprimir.
+// Usa a biblioteca jsPDF (carregada no index.html).
+function salvarPdf() {
+    if (!window.jspdf) {
+        alert("Não deu pra criar o PDF: precisa de internet na primeira vez.");
+        return;
+    }
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
+    const larguraFolha = 210;
+    const alturaFolha = 297;
+    const borda = 15;
+    const larguraUtil = larguraFolha - borda * 2;
+    let y = borda;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.setTextColor("#7d63b5");
+    pdf.text("Meu gráfico", borda, y + 6);
+    y += 14;
+
+    // Gráfico do tamanho que couber na folha, sem esticar
+    const grafico = desenharGrafico();
+    const escala = Math.min(larguraUtil / grafico.width, (alturaFolha - y - borda) / grafico.height);
+    const larguraGrafico = grafico.width * escala;
+    const alturaGrafico = grafico.height * escala;
+    pdf.addImage(grafico.toDataURL("image/png"), "PNG",
+        (larguraFolha - larguraGrafico) / 2, y, larguraGrafico, alturaGrafico, undefined, "FAST");
+    y += alturaGrafico + 10;
+
+    // Receita: se não couber, continua na próxima folha
+    const alturaLinha = 5.5;
+    function novaFolhaSePrecisar(espaco) {
+        if (y + espaco > alturaFolha - borda) {
+            pdf.addPage();
+            y = borda;
+        }
+    }
+
+    // Se sobrar pouco espaço embaixo do gráfico, a receita começa na folha seguinte
+    novaFolhaSePrecisar(60);
+    pdf.setFontSize(15);
+    pdf.text("Receita", borda, y + 5);
+    y += 12;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    pdf.setTextColor("#4a4060");
+    pdf.setDrawColor("#8cc7a0");
+    for (const frase of linhasDaReceita()) {
+        const pedacos = pdf.splitTextToSize(frase, larguraUtil - 8);
+        novaFolhaSePrecisar(pedacos.length * alturaLinha + 1);
+        pdf.rect(borda, y - 3.4, 4, 4); // quadradinho pra marcar
+        pdf.text(pedacos, borda + 7, y);
+        y += pedacos.length * alturaLinha + 1;
+    }
+
+    baixarArquivo(pdf.output("blob"), "receita-croche.pdf");
+}
+
 document.getElementById("salvar-png").addEventListener("click", salvarPng);
+
+// ===== Foto → gráfico =====
+// Diminui a foto pro tamanho da grade (mantendo a largura escolhida e
+// calculando a altura pela proporção da foto) e troca cada pedacinho
+// pelo fio de cor mais parecida. Depois já gera a receita.
+
+// Converte a cor pra "Lab", um jeito de medir cor parecido com o olho humano
+function paraLab(r, g, b) {
+    function linear(c) {
+        c = c / 255;
+        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+    const R = linear(r), G = linear(g), B = linear(b);
+    const x = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+    const y = R * 0.2126 + G * 0.7152 + B * 0.0722;
+    const z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+    function f(t) {
+        return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+    }
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+function distancia(a, b) {
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+}
+
+// Lhama e Unicórnio são mesclados, a cor da tela não representa o fio
+const MESCLADOS = ["9278", "9534"];
+const fiosLisos = fios
+    .filter(function (fio) { return !MESCLADOS.includes(fio.codigo); })
+    .map(function (fio) {
+        const r = parseInt(fio.hex.slice(1, 3), 16);
+        const g = parseInt(fio.hex.slice(3, 5), 16);
+        const b = parseInt(fio.hex.slice(5, 7), 16);
+        return { codigo: fio.codigo, lab: paraLab(r, g, b) };
+    });
+
+function fioMaisParecido(lab, opcoes) {
+    let melhor = opcoes[0];
+    for (const opcao of opcoes) {
+        if (distancia(lab, opcao.lab) < distancia(lab, melhor.lab)) {
+            melhor = opcao;
+        }
+    }
+    return melhor.codigo;
+}
+
+// Diminui a foto aos poucos (metade por vez) pra não perder detalhe
+function diminuirFoto(imagem, largura, altura) {
+    let tela = document.createElement("canvas");
+    tela.width = imagem.width;
+    tela.height = imagem.height;
+    tela.getContext("2d").drawImage(imagem, 0, 0);
+
+    while (tela.width / 2 > largura && tela.height / 2 > altura) {
+        const menor = document.createElement("canvas");
+        menor.width = Math.round(tela.width / 2);
+        menor.height = Math.round(tela.height / 2);
+        menor.getContext("2d").drawImage(tela, 0, 0, menor.width, menor.height);
+        tela = menor;
+    }
+
+    const final = document.createElement("canvas");
+    final.width = largura;
+    final.height = altura;
+    const pincel = final.getContext("2d");
+    pincel.imageSmoothingQuality = "high";
+    pincel.drawImage(tela, 0, 0, largura, altura);
+    return pincel.getImageData(0, 0, largura, altura).data;
+}
+
+// Acha as cores principais da imagem (o laranja de um detalhe pequeno
+// também ganha vaga, porque procuramos cores DIFERENTES, não as mais usadas)
+function acharCoresPrincipais(cores, quantas) {
+    // Começa pela cor média e vai pegando a cor mais distante das já escolhidas
+    const media = [0, 0, 0];
+    for (const cor of cores) {
+        media[0] += cor[0] / cores.length;
+        media[1] += cor[1] / cores.length;
+        media[2] += cor[2] / cores.length;
+    }
+    const centros = [media];
+    while (centros.length < quantas) {
+        let maisLonge = null;
+        let maiorDistancia = -1;
+        for (const cor of cores) {
+            let perto = Infinity;
+            for (const centro of centros) {
+                perto = Math.min(perto, distancia(cor, centro));
+            }
+            if (perto > maiorDistancia) {
+                maiorDistancia = perto;
+                maisLonge = cor;
+            }
+        }
+        if (maiorDistancia <= 0) break; // a imagem tem menos cores que o pedido
+        centros.push(maisLonge.slice());
+    }
+
+    // Ajusta cada cor principal pro meio do grupo de cores parecidas com ela
+    for (let volta = 0; volta < 15; volta++) {
+        const somas = centros.map(function () { return [0, 0, 0, 0]; });
+        for (const cor of cores) {
+            const soma = somas[maisPerto(cor, centros)];
+            soma[0] += cor[0];
+            soma[1] += cor[1];
+            soma[2] += cor[2];
+            soma[3]++;
+        }
+        for (let i = 0; i < centros.length; i++) {
+            if (somas[i][3] > 0) {
+                centros[i] = [somas[i][0] / somas[i][3], somas[i][1] / somas[i][3], somas[i][2] / somas[i][3]];
+            }
+        }
+    }
+    return centros;
+}
+
+function maisPerto(cor, centros) {
+    let melhor = 0;
+    for (let i = 1; i < centros.length; i++) {
+        if (distancia(cor, centros[i]) < distancia(cor, centros[melhor])) {
+            melhor = i;
+        }
+    }
+    return melhor;
+}
+
+// Cada quadrado da grade olha vários pontinhos da foto (DETALHE × DETALHE)
+// e fica com a cor que mais aparece, em vez da média. Assim um contorno
+// escuro misturado com azul não vira um cinza que não existe no desenho.
+const DETALHE = 6;
+
+// Recebe os pontinhos da foto e devolve o código do fio de cada quadrado
+// (null = parte transparente, fica de fundo)
+function fiosDosQuadrados(dados, novasColunas, novasLinhas, maximoDeCores) {
+    const largura = novasColunas * DETALHE;
+    const total = largura * novasLinhas * DETALHE;
+
+    const labs = new Array(total);
+    const amostra = [];
+    const pulo = Math.max(1, Math.floor(total / 20000)); // olha no máximo uns 20 mil pontinhos
+    for (let i = 0; i < total; i++) {
+        if (dados[i * 4 + 3] < 128) continue;
+        labs[i] = paraLab(dados[i * 4], dados[i * 4 + 1], dados[i * 4 + 2]);
+        if (i % pulo === 0) amostra.push(labs[i]);
+    }
+    if (amostra.length === 0) return [];
+
+    const centros = acharCoresPrincipais(amostra, maximoDeCores);
+    const codigos = centros.map(function (centro) {
+        return fioMaisParecido(centro, fiosLisos);
+    });
+
+    const resultado = [];
+    for (let linha = 0; linha < novasLinhas; linha++) {
+        for (let coluna = 0; coluna < novasColunas; coluna++) {
+            const votos = {};
+            for (let y = 0; y < DETALHE; y++) {
+                for (let x = 0; x < DETALHE; x++) {
+                    const i = (linha * DETALHE + y) * largura + coluna * DETALHE + x;
+                    const voto = labs[i] ? codigos[maisPerto(labs[i], centros)] : "fundo";
+                    votos[voto] = (votos[voto] || 0) + 1;
+                }
+            }
+            let vencedor = "fundo";
+            for (const voto in votos) {
+                if (votos[voto] > (votos[vencedor] || 0)) vencedor = voto;
+            }
+            resultado.push(vencedor === "fundo" ? null : vencedor);
+        }
+    }
+    return limparPontinhos(resultado, novasColunas, novasLinhas);
+}
+
+// Tira os pontinhos escuros soltos que sobram do contorno do desenho:
+// quadrado sozinho (nenhum vizinho da mesma cor), na beirada entre duas
+// cores, e mais escuro que a cor em volta. O brilho do olho é claro, então fica.
+function limparPontinhos(quadrados, largura, altura) {
+    function claridade(codigo) {
+        if (!codigo) return 100; // fundo = branco
+        return fiosLisos.find(function (fio) { return fio.codigo === codigo; }).lab[0];
+    }
+
+    const limpo = quadrados.slice();
+    for (let linha = 0; linha < altura; linha++) {
+        for (let coluna = 0; coluna < largura; coluna++) {
+            const cor = quadrados[linha * largura + coluna];
+            if (!cor) continue;
+
+            const vizinhos = {};
+            let sozinho = true;
+            for (let y = linha - 1; y <= linha + 1; y++) {
+                for (let x = coluna - 1; x <= coluna + 1; x++) {
+                    if (y < 0 || x < 0 || y >= altura || x >= largura) continue;
+                    if (y === linha && x === coluna) continue;
+                    const vizinho = quadrados[y * largura + x];
+                    if (vizinho === cor) sozinho = false;
+                    vizinhos[vizinho] = (vizinhos[vizinho] || 0) + 1;
+                }
+            }
+            if (!sozinho || Object.keys(vizinhos).length < 2) continue;
+
+            let maisComum = null;
+            for (const vizinho in vizinhos) {
+                if (maisComum === null || vizinhos[vizinho] > vizinhos[maisComum]) maisComum = vizinho;
+            }
+            maisComum = maisComum === "null" ? null : maisComum;
+            if (claridade(cor) < claridade(maisComum)) {
+                limpo[linha * largura + coluna] = maisComum;
+            }
+        }
+    }
+    return limpo;
+}
+
+function fotoParaGrafico(imagem) {
+    const campoColunas = document.getElementById("colunas");
+    campoColunas.value = limitar(campoColunas.value);
+    const novasColunas = Number(campoColunas.value);
+    const novasLinhas = limitar(Math.round(novasColunas * imagem.height / imagem.width));
+    const campoCores = document.getElementById("cores-foto");
+    campoCores.value = Math.max(2, Math.min(20, parseInt(campoCores.value, 10) || 8));
+    const maximoDeCores = Number(campoCores.value);
+
+    const dados = diminuirFoto(imagem, novasColunas * DETALHE, novasLinhas * DETALHE);
+    const quadrados = fiosDosQuadrados(dados, novasColunas, novasLinhas, maximoDeCores);
+
+    const pintados = {};
+    for (let i = 0; i < quadrados.length; i++) {
+        if (!quadrados[i]) continue;
+        const linha = Math.floor(i / novasColunas);
+        const coluna = i % novasColunas;
+        pintados[(novasLinhas - linha) + "-" + coluna] = quadrados[i];
+    }
+
+    document.getElementById("linhas").value = novasLinhas;
+    try {
+        localStorage.setItem("linhas", novasLinhas);
+        localStorage.setItem("colunas", novasColunas);
+    } catch (erro) {}
+    guardarParaDesfazer();
+    criarGrade(novasLinhas, novasColunas, pintados);
+    salvarDesenho();
+    gerarReceita();
+}
+
+const arquivoFoto = document.getElementById("arquivo-foto");
+
+document.getElementById("usar-foto").addEventListener("click", function () {
+    arquivoFoto.click();
+});
+
+arquivoFoto.addEventListener("change", function () {
+    const arquivo = arquivoFoto.files[0];
+    if (!arquivo) return;
+    const imagem = new Image();
+    imagem.onload = function () {
+        fotoParaGrafico(imagem);
+        URL.revokeObjectURL(imagem.src);
+    };
+    imagem.src = URL.createObjectURL(arquivo);
+    arquivoFoto.value = ""; // permite escolher a mesma foto de novo
+});
 
 // ===== Receita =====
 function corDaCelula(linha, coluna) {
@@ -306,17 +685,65 @@ function agrupar(lista) {
     return grupos.join(", ");
 }
 
-function gerarReceita() {
-    let texto = "";
+// Uma frase por carreira, da 1 (embaixo) até a última
+function linhasDaReceita() {
+    const frases = [];
     for (let linha = linhas - 1; linha >= 0; linha--) {
         const carreira = linhas - linha;
         const lista = coresDaCarreira(linha, carreira);
-        texto += "Carreira " + carreira + ": " + agrupar(lista) + "\n";
+        frases.push("Carreira " + carreira + ": " + agrupar(lista));
     }
-    document.getElementById("receita").textContent = texto;
+    return frases;
 }
 
-document.getElementById("gerar").addEventListener("click", gerarReceita);
+// Cada carreira ganha uma caixinha pra marcar quando terminar.
+// As marcadas ficam guardadas no navegador, pra ela continuar outro dia.
+function lerFeitas() {
+    try {
+        return JSON.parse(localStorage.getItem("feitas")) || [];
+    } catch (erro) {
+        return [];
+    }
+}
+
+function gerarReceita() {
+    const receita = document.getElementById("receita");
+    const feitas = lerFeitas();
+    receita.innerHTML = "";
+
+    linhasDaReceita().forEach(function (frase, i) {
+        const carreira = i + 1;
+        const linha = document.createElement("label");
+        linha.classList.add("carreira");
+
+        const caixa = document.createElement("input");
+        caixa.type = "checkbox";
+        caixa.checked = feitas.includes(carreira);
+        linha.classList.toggle("feita", caixa.checked);
+
+        caixa.addEventListener("change", function () {
+            linha.classList.toggle("feita", caixa.checked);
+            const marcadas = lerFeitas().filter(function (n) { return n !== carreira; });
+            if (caixa.checked) marcadas.push(carreira);
+            try {
+                localStorage.setItem("feitas", JSON.stringify(marcadas));
+            } catch (erro) {}
+        });
+
+        const texto = document.createElement("span");
+        texto.textContent = frase;
+
+        linha.appendChild(caixa);
+        linha.appendChild(texto);
+        receita.appendChild(linha);
+    });
+}
+
+// Mostra a receita com as caixinhas na tela e baixa o PDF
+document.getElementById("gerar").addEventListener("click", function () {
+    gerarReceita();
+    salvarPdf();
+});
 
 // ===== Modo noturno =====
 // A escolha fica guardada no navegador. Na primeira vez, segue o modo do computador.
@@ -367,3 +794,8 @@ criarGrade(
     limitar(document.getElementById("colunas").value),
     desenhoSalvo
 );
+
+// Se ela já tinha marcado carreiras, mostra a receita de novo com as marcas
+if (lerFeitas().length > 0) {
+    gerarReceita();
+}

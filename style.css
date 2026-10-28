@@ -107,18 +107,24 @@ button:focus-visible {
 }
 
 #criar,
-#salvar-png {
+#salvar-png,
+#desfazer,
+#usar-foto {
   background: var(--lavanda);
   color: var(--lavanda-texto);
   box-shadow: 0 4px 0 var(--lavanda-sombra);
 }
 #criar:hover,
-#salvar-png:hover {
+#salvar-png:hover,
+#desfazer:hover,
+#usar-foto:hover {
   background: var(--lavanda-hover);
   box-shadow: 0 6px 0 var(--lavanda-sombra);
 }
 #criar:active,
-#salvar-png:active {
+#salvar-png:active,
+#desfazer:active,
+#usar-foto:active {
   box-shadow: 0 1px 0 var(--lavanda-sombra);
 }
 
@@ -329,8 +335,8 @@ body.noturno .celula:hover {
   font-family: inherit;
   font-size: 15px;
   line-height: 1.6;
-  white-space: pre-wrap;
   max-width: min(900px, 100%);
+  box-sizing: border-box;
   margin: 18px 0 0;
   padding: 18px 22px;
   background: var(--cartao);
@@ -340,4 +346,34 @@ body.noturno .celula:hover {
 }
 #receita:empty {
   display: none;
+}
+
+/* Desfazer fica apagadinho quando não tem nada pra desfazer */
+#desfazer:disabled {
+  opacity: 0.5;
+  cursor: default;
+  background: var(--lavanda);
+  transform: none;
+  box-shadow: 0 4px 0 var(--lavanda-sombra);
+}
+
+/* Uma linha por carreira, com caixinha pra marcar quando terminar */
+.carreira {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.carreira input {
+  width: 20px;
+  height: 20px;
+  margin: 3px 0 0;
+  accent-color: var(--verde-sombra);
+  cursor: pointer;
+}
+/* Carreira feita fica riscada e apagadinha */
+.carreira.feita span {
+  text-decoration: line-through;
+  opacity: 0.5;
 }
