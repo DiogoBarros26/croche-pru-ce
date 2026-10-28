@@ -225,8 +225,14 @@ button:focus-visible {
 }
 
 /* ===== Escolha do fio ===== */
-#escolha-fio {
+/* Fio + ferramentas numa linha só. A paleta abre centralizada nessa linha */
+#ferramentas {
   position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
 }
 #botao-fio {
@@ -376,4 +382,44 @@ body.noturno .celula:hover {
 .carreira.feita span {
   text-decoration: line-through;
   opacity: 0.5;
+}
+
+/* ===== Ferramentas (conta-gotas e espelho) ===== */
+.ferramenta {
+  background: var(--cartao);
+  color: var(--texto);
+  border: 2px solid var(--lavanda);
+  box-shadow: 0 4px 0 var(--lavanda);
+}
+.ferramenta:hover {
+  box-shadow: 0 6px 0 var(--lavanda);
+}
+.ferramenta:active {
+  box-shadow: 0 1px 0 var(--lavanda);
+}
+/* Ferramenta ligada fica pintada de lavanda */
+.ferramenta.ligada {
+  background: var(--lavanda);
+  color: var(--lavanda-texto);
+  box-shadow: 0 4px 0 var(--lavanda-sombra);
+}
+
+/* Com o conta-gotas ligado, o cursor vira uma mira */
+#grade.pegando-cor .celula {
+  cursor: crosshair;
+}
+
+/* Com o espelho ligado, uma linha rosa marca o meio da grade */
+#grade {
+  position: relative;
+}
+#grade.espelhando::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: var(--rosa-forte);
+  pointer-events: none;
 }

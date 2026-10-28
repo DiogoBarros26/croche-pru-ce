@@ -9,6 +9,8 @@ const MAXIMO = 200;
 
 let fioAtual = fios[0];
 let pintando = false;
+let espelho = false; // pinta igual dos dois lados
+let pegandoCor = false; // conta-gotas ligado
 let linhas = 0;
 let colunas = 0;
 
@@ -21,9 +23,18 @@ function nomeDoFio(fio) {
     return fio.nome + " (" + fio.codigo + ")";
 }
 
-function pintar(celula) {
+function pintarUm(celula) {
     celula.dataset.codigo = fioAtual.codigo;
     celula.style.background = fioAtual.hex;
+}
+
+// Com o espelho ligado, pinta também o quadrado do outro lado da linha do meio
+function pintar(celula) {
+    pintarUm(celula);
+    if (espelho) {
+        const outroLado = grade.children[celula.linha * colunas + (colunas - 1 - celula.coluna)];
+        pintarUm(outroLado);
+    }
 }
 
 function limitar(valor) {
@@ -43,6 +54,16 @@ function mostrarFioAtual() {
     amostra.style.background = fioAtual.hex;
 }
 
+function escolherFio(fio) {
+    fioAtual = fio;
+    const anterior = document.querySelector(".selecionada");
+    if (anterior) {
+        anterior.classList.remove("selecionada");
+    }
+    paleta.children[fios.indexOf(fio)].classList.add("selecionada");
+    mostrarFioAtual();
+}
+
 for (const fio of fios) {
     const bolinha = document.createElement("div");
     bolinha.classList.add("cor");
@@ -51,13 +72,7 @@ for (const fio of fios) {
     paleta.appendChild(bolinha);
 
     bolinha.addEventListener("click", function () {
-        fioAtual = fio;
-        const anterior = document.querySelector(".selecionada");
-        if (anterior) {
-            anterior.classList.remove("selecionada");
-        }
-        bolinha.classList.add("selecionada");
-        mostrarFioAtual();
+        escolherFio(fio);
         paleta.classList.add("escondida");
     });
 }
@@ -73,6 +88,26 @@ document.addEventListener("click", function (evento) {
     if (!document.getElementById("escolha-fio").contains(evento.target)) {
         paleta.classList.add("escondida");
     }
+});
+
+// ===== Conta-gotas e espelho =====
+const botaoContaGotas = document.getElementById("conta-gotas");
+const botaoEspelho = document.getElementById("espelho");
+
+function ligarContaGotas(ligar) {
+    pegandoCor = ligar;
+    botaoContaGotas.classList.toggle("ligada", ligar);
+    grade.classList.toggle("pegando-cor", ligar);
+}
+
+botaoContaGotas.addEventListener("click", function () {
+    ligarContaGotas(!pegandoCor);
+});
+
+botaoEspelho.addEventListener("click", function () {
+    espelho = !espelho;
+    botaoEspelho.classList.toggle("ligada", espelho);
+    grade.classList.toggle("espelhando", espelho);
 });
 
 // ===== Grade =====
@@ -116,6 +151,8 @@ function criarGrade(novasLinhas, novasColunas, pintados = lerPintados()) {
         for (let coluna = 0; coluna < colunas; coluna++) {
             const celula = document.createElement("div");
             celula.classList.add("celula");
+            celula.linha = linha;
+            celula.coluna = coluna;
             const codigo = pintados[(linhas - linha) + "-" + coluna];
             if (codigo && fioPorCodigo[codigo]) {
                 celula.dataset.codigo = codigo;
@@ -144,19 +181,55 @@ window.addEventListener("resize", ajustarTamanho);
 grade.addEventListener("pointerdown", function (evento) {
     if (evento.target.classList.contains("celula")) {
         evento.preventDefault();
+
+        // Conta-gotas: pega o fio do quadrado e volta pro pincel
+        if (pegandoCor) {
+            escolherFio(fioPorCodigo[evento.target.dataset.codigo || FUNDO]);
+            ligarContaGotas(false);
+            return;
+        }
+
         guardarParaDesfazer();
         pintando = true;
+        ultimoPonto = { x: evento.clientX, y: evento.clientY };
         pintar(evento.target);
     }
 });
+
+// Pinta o quadrado que está embaixo de um ponto da tela
+function pintarEmbaixo(x, y) {
+    const embaixo = document.elementFromPoint(x, y);
+    if (embaixo && embaixo.classList.contains("celula")) {
+        pintar(embaixo);
+    }
+}
+
+// O navegador só avisa a posição do ponteiro de tempos em tempos.
+// Com o movimento rápido, ele "pula" quadrados, então pintamos todo o
+// caminho entre a posição anterior e a nova, de pouquinho em pouquinho.
+let ultimoPonto = null;
+
+function pintarCaminho(x, y) {
+    const passo = Math.max(2, parseFloat(grade.style.getPropertyValue("--tam")) / 3 || 4);
+    const dx = x - ultimoPonto.x;
+    const dy = y - ultimoPonto.y;
+    const passos = Math.ceil(Math.hypot(dx, dy) / passo);
+    for (let i = 1; i <= passos; i++) {
+        pintarEmbaixo(ultimoPonto.x + dx * i / passos, ultimoPonto.y + dy * i / passos);
+    }
+    pintarEmbaixo(x, y);
+    ultimoPonto = { x: x, y: y };
+}
 
 // No toque e na caneta o evento fica preso ao primeiro quadrado,
 // então procuramos qual quadrado está embaixo do dedo agora
 grade.addEventListener("pointermove", function (evento) {
     if (!pintando) return;
-    const embaixo = document.elementFromPoint(evento.clientX, evento.clientY);
-    if (embaixo && embaixo.classList.contains("celula")) {
-        pintar(embaixo);
+    // Alguns navegadores juntam vários movimentos num aviso só; usamos todos
+    const movimentos = evento.getCoalescedEvents ? evento.getCoalescedEvents() : [];
+    if (movimentos.length === 0) movimentos.push(evento);
+    for (const movimento of movimentos) {
+        pintarCaminho(movimento.clientX, movimento.clientY);
     }
 });
 
